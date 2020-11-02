@@ -1,0 +1,36 @@
+= CAN and FMI 3.0
+:sectnums:
+:sectnumlevels: 5
+:toc: left
+:toc-title: Contents
+:toclevels: 5
+:xrefstyle: short
+:docinfo: shared
+:docinfodir: docs
+:stylesheet: docs/fmi-spec.css
+:stem: latexmath
+:source-highlighter: highlightjs
+:nofooter:
+:favicon: images/favicon.ico
+:revdate: unreleased
+:revnumber: 3.0
+:icons: font
+
+This layered standard defines, based on FMI 3.0, how to describe and implement CAN support for FMUs.
+
+{empty} +
+{empty}
+
+Copyright (C) 2008-2011 MODELISAR Consortium and 2012-2020 The Modelica Association Project FMI.
+
+This document is licensed under the Attribution-ShareAlike 4.0 International license.
+The code is released under the 2-Clause BSD License.
+The licenses text can be found in the https://raw.githubusercontent.com/modelica/fmi-standard/master/LICENSE.txt[LICENSE.txt] file that accompanies this distribution.
+
+{empty}
+
+== Introduction
+
+=== Intend of this Document
+
+FMI 3.0 was extended also with virtual Electronic Control Units (virtual ECUs) in mind.
