@@ -16,7 +16,7 @@
 :revnumber: 3.0
 :icons: font
 
-This document treats a low-cut approach for Controller Area Network (CAN) data exchange in virtualized Electronic Control Unit (vECU).
+This document describes a low-cut approach for Controller Area Network (CAN) communication of a virtual Electronic Control Unit (ECU) with a simulated CAN bus based on the FMI 3.0 standard.
 
 {empty} +
 {empty}
@@ -35,21 +35,21 @@ The licenses text can be found in the https://raw.githubusercontent.com/modelica
 
 CAN is a communication bus for automotive ECUs. Communication busses in general are used to transport information e.g. signal-, network management- or diagnosis data in ECU networks.
 
-This document describes a way to access the network messages provided by a full-blown CAN communication software stack inside of a vECU. The access is performed by using the FMI 3.0 interface.
+This document describes a way to communicate the network messages provided/consumed by a full-blown CAN communication software stack inside of a virtual ECU. The communication is performed by using the FMI 3.0 interface.
 
 === Motivation
 
-When using signal based data transport in a vECU all signal values that are to be transferred must be packed to Protocol Data Units (PDU). The signal layout of a communication system's PDUs are fully described in the Communication Matrix (Com Matrix) including the transfer timings, signal scaling and packing information. Based on the Com Matrix, Communication Stack Software can be generated to provide the packing code to place the signal values into PDUs that are later transported via a CAN Communication Controller to the connected receiver nodes. Also the trigger timing and signal scaling is provided in the basic software code.
+When using signal based data transport in a virtual ECU all signal values that are to be transferred must be packed to Protocol Data Units (PDU). The signal layout of a communication system's PDUs are fully described in the Communication Matrix (Com Matrix) including the transfer timings, signal scaling and packing information. Based on the Com Matrix, Communication Stack Software can be generated to provide the packing code to place the signal values into PDUs that are later transported via a CAN Communication Controller to the connected receiver nodes. Also the trigger timing and signal scaling is realized in the basic software code.
 
-In contrast to signal based data transport, ECUs can additionally contain Basic Software Module code to provide e. g. Network Management, Onboard Diagnosis or even secured Onboard Communication. These software modules in contrast use very specific transport protocols instead. This kind of data transport cannot be described in the Com Matrix. In addition it's difficult to pre-configure this kind of communication in advance, as it's fully flexible data transportation in terms of payload length and trigger timing. This kind of communication requires a low-cut approach when virtualizing a ECU as the basic software plays a vital part in the communication bahavior of the data exchange via CAN.
+In contrast to signal based data transport, ECUs can additionally contain Basic Software Module code to provide e. g. Network Management, Onboard Diagnosis or even secured Onboard Communication. These software modules in contrast use very specific transport protocols instead. This kind of data transport cannot be described in the Com Matrix. In addition it is difficult to pre-configure this kind of communication in advance, as it is fully flexible data transportation in terms of payload length and trigger timing. This kind of communication requires a low-cut approach when virtualizing a ECU as the basic software plays a vital part in the communication bahavior of the data exchange via CAN. Low-cut means that the interface between the virtual ECU and the simulator is realized at the level of the bus communication controllers where frames are sent to/received from the network.
 
-In order to support both the signal based and the transport protocol communication features in a virtualized ECU (vECU) there is the need for a common approach - the CAN data frame. It's the binary representation of a message instance specified in the CAN protocol. It's protocol-specific binary format holds all communication meta data that are required for data distribition using the CAN protocol.
+In order to support both the signal based and the transport protocol communication features in a virtual ECU there is the need for a common approach - the CAN data frame. It is the binary representation of a message instance specified in the CAN protocol. Its protocol-specific binary format holds all communication meta data that are required for data distribution using the CAN protocol.
 
 === Basics
 
-This approach uses a frame-based data exchange interface to the CAN messages. Each network node provides a dedicated exchange point to the CAN Cluster and gives access for sending or receiving messages. Despite the fact that CAN specifications precludes the existance of multiple senders of a certain message due to unspecified behavior during the arbitration phase, applying time multiplexed message transmission using multiple network nodes marks a valid area of application.
+This approach uses a frame-based data exchange interface to the CAN messages. Each network node provides a dedicated exchange point to the CAN Cluster and gives access for sending or receiving messages. Despite the fact that the CAN specifications precludes the existence of multiple senders of a certain message due to unspecified behavior during the arbitration phase, applying time multiplexed message transmission using multiple network nodes marks a valid area of application.
 
-As the trigger timings are part of the basic software code that is provided inside the FMU, any message transmission is controlled by the model's internal finite state automaton. This may include extensive network management, state or startup behavior that cannot be predicted based on Com Matrix information.
+As the trigger timings are part of the basic software code that is provided inside the FMU, any message transmission is controlled by the model's internal finite state automaton. This may include extensive network management, state management or startup behavior that cannot be predicted based on Com Matrix information.
 
 == Details
 
@@ -71,7 +71,7 @@ Element Definitions::
 
 ==== Network Node Buffer
 
-The network node buffer is specified by a pair of `TerminalMemberVariable` elements that each references a variable of type `fmi3Binary`. There must be one each with causality set to `Input` and `Output`.
+The network node buffer is specified by a pair of `TerminalMemberVariable` elements that each references a variable of type `fmi3Binary`. There must be one with causality set to `Input` and the other set to `Output`. The variables should have the attribute `clockReference` set to its corresponding clock variable indicating the message event.
 
 Attribute Definitions::
 
@@ -81,7 +81,7 @@ Attribute Definitions::
 
 ==== Network Node Event
 
-The network node event is specified by a pair of `TerminalMemberVariable` elements that each references a variable of type `fmi3Clock`. There must be one each with causality set to `Input` and `Output`. These aperiodic clocks are activated if a node buffer contains a new message.
+The network node event is specified by a pair of `TerminalMemberVariable` elements that each references a variable of type `fmi3Clock`. There must be one with causality set to `Input` and the other set to `Output`. These aperiodic clocks are activated if a node buffer contains a new message.
 
 Attribute Definitions::
 
@@ -89,12 +89,22 @@ Attribute Definitions::
 * `memberName` is either `InputEvent` or `OutputEvent`.
 * `variableKind` is `signal`.
 
+==== Network Node Error Counter
+
+The network node error counter is specified by a pair of `TerminalMemberVariable` elements that each reference a variable of type `fmi3UInt8`. The `causality` must be set to `Input`. Both variables are used to track transport issues in order to adapt the internal CAN error state machine and transmission behavior accordingly.
+
+Attribute Definitions::
+
+* `variableName` refers to the input variable names specified in the model description file of the FMU.
+* `memberName` is either `RxErrorCounter` or `TxErrorCounter`.
+* `variableKind` is `signal`.
+
 === Binary Message Format
 
-All messages transferred via the node buffers must use the binary representation of a CAN 2.0B or CAN FD (Flexible Data Rate) frame format declared in ISO 11898-1:2015. All message frame fields are mandatory except for the CRC (Cyclic redundancy check) in conjunction with Acknowledge and EOF (End of Frame) that are optional. Bit stuffing must not be applied.
+All messages transferred via the node buffers must use the binary representation of a CAN 2.0B or CAN FD (Flexible Data Rate) frame format declared in ISO 11898-1:2015. The following fields are used: Start of Frame, Arbitration, Control, Data, CRC (Cyclic redundancy check including the CRC delimiter) and EOF (End of Frame). The Acknowledge field (including the Acknowledge delimiter) is required but remains unconsidered. Bit stuffing must not be applied to the frame data.
 
 === Bus Terminal Connection
 
 When connecting Bus Terminals, their network node event clocks must be treated as dependent. That means that the input clock of one network node must be triggered by the output clock of a second network node and vice versa.
 
-If there are more than two Bus Terminals interconnected to each other, a cluster simulation model must be added. This model provides separate Bus Terminals to each network node and implements a user-specific cluster behavior for the message exchange. It might also address topics like arbitration, bandwidth limitation or buffer handling.
+If there are more than two Bus Terminals interconnected to each other, a central cluster simulation model must be provided by either a seperate FMU or the simulation environment. This model provides separate Bus Terminals to each network node and implements a user-specific CAN cluster behavior for the message exchange. This might also address topics like arbitration, bandwidth limitation or buffer handling.
